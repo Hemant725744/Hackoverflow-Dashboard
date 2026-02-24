@@ -1,0 +1,36 @@
+name: Hourly Backup Report Email
+
+on:
+  schedule:
+    # Fires every hour at :00 — summarises all backups from the past hour
+    - cron: '0 * * * *'
+
+  # Lets you manually fire a report anytime from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Send hourly backup report
+        run: |
+          echo "▶ Sending hourly backup report at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+
+          HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
+            --max-time 25 \
+            --retry 1 \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.APP_URL }}/api/backup-report")
+
+          echo "HTTP status : $HTTP_STATUS"
+          cat response.json | python3 -m json.tool 2>/dev/null || cat response.json
+          echo ""
+
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✓ Report email sent"
+          else
+            echo "✗ Report failed with HTTP $HTTP_STATUS"
+            exit 1
+          fi

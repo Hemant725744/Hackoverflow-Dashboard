@@ -2,34 +2,40 @@ name: Database Backup to Google Drive
 
 on:
   schedule:
-    # ── Choose ONE of the lines below, comment out the others ──────────────────
-    - cron: '*/5 * * * *'    # Every 5 minutes  ← uncomment to use
-    # - cron: '*/10 * * * *' # Every 10 minutes ← uncomment to use
-    # - cron: '*/20 * * * *' # Every 20 minutes ← uncomment to use
+    # ── Choose ONE — comment out the others ────────────────────────────────────
+    - cron: '*/5 * * * *'    # Every 5 minutes  ← active
+    # - cron: '*/10 * * * *' # Every 10 minutes
+    # - cron: '*/20 * * * *' # Every 20 minutes
 
-  # Lets you trigger a manual backup anytime from the Actions tab
+  # Trigger a one-off backup anytime from the Actions tab
   workflow_dispatch:
 
 jobs:
   backup:
     runs-on: ubuntu-latest
+    timeout-minutes: 5
+
     steps:
       - name: Trigger backup endpoint
         run: |
-          echo "Triggering Drive backup at $(date -u)"
+          echo "▶ Triggering Drive backup at $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 
           HTTP_STATUS=$(curl -s -o response.json -w "%{http_code}" \
-            --max-time 60 \
+            --max-time 55 \
+            --retry 2 \
+            --retry-delay 5 \
+            --retry-connrefused \
             -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
             "${{ secrets.APP_URL }}/api/backup")
 
-          echo "HTTP status: $HTTP_STATUS"
-          echo "Response:"
-          cat response.json
+          echo "HTTP status : $HTTP_STATUS"
+          echo "Response    :"
+          cat response.json | python3 -m json.tool 2>/dev/null || cat response.json
+          echo ""
 
-          if [ "$HTTP_STATUS" != "200" ]; then
-            echo "Backup failed with HTTP $HTTP_STATUS"
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "✓ Backup uploaded to Google Drive successfully"
+          else
+            echo "✗ Backup failed with HTTP $HTTP_STATUS"
             exit 1
           fi
-
-          echo "Backup uploaded to Google Drive successfully"

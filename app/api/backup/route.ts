@@ -4,10 +4,14 @@ import { Readable } from 'stream';
 import clientPromise from '@/lib/mongodb';
 import { DBParticipant } from '@/types';
 import { ObjectId } from 'mongodb';
+import { logBackupResult } from '@/actions/backup-log';
 
 const DB_NAME         = 'hackoverflow';
 const COLLECTION_NAME = 'participants';
 const CRON_SECRET     = process.env.CRON_SECRET;
+
+export const runtime     = 'nodejs';
+export const maxDuration = 60;
 
 type ParticipantDocument = Omit<DBParticipant, '_id'> & { _id?: ObjectId };
 
@@ -63,15 +67,11 @@ async function buildCSV(): Promise<{ csv: string; count: number }> {
 }
 
 async function uploadToDrive(csv: string, filename: string): Promise<string> {
-  // OAuth2 — works with personal Gmail, no Shared Drive needed
   const oauth2Client = new google.auth.OAuth2(
     process.env.GOOGLE_CLIENT_ID,
     process.env.GOOGLE_CLIENT_SECRET,
   );
-
-  oauth2Client.setCredentials({
-    refresh_token: process.env.GOOGLE_REFRESH_TOKEN,
-  });
+  oauth2Client.setCredentials({ refresh_token: process.env.GOOGLE_REFRESH_TOKEN });
 
   const drive = google.drive({ version: 'v3', auth: oauth2Client });
 
@@ -81,10 +81,7 @@ async function uploadToDrive(csv: string, filename: string): Promise<string> {
       mimeType: 'text/csv',
       parents: [process.env.GOOGLE_DRIVE_FOLDER_ID!],
     },
-    media: {
-      mimeType: 'text/csv',
-      body:     Readable.from([csv]),
-    },
+    media: { mimeType: 'text/csv', body: Readable.from([csv]) },
     fields: 'id, webViewLink',
   });
 
@@ -97,27 +94,51 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  const start = Date.now();
+
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
     const filename  = `hackoverflow-backup-${timestamp}.csv`;
 
     const { csv, count } = await buildCSV();
-    const fileLink = await uploadToDrive(csv, filename);
+    const fileLink        = await uploadToDrive(csv, filename);
+    const duration        = Date.now() - start;
 
-    console.info(`[Backup] Uploaded ${count} records → ${fileLink}`);
+    await logBackupResult({
+      success:  true,
+      count,
+      filename,
+      driveUrl: fileLink,
+      duration,
+      time:     new Date(),
+      source:   'cron',
+    });
+
+    console.info(`[Backup] ✓ ${count} records → ${fileLink} (${duration}ms)`);
 
     return NextResponse.json({
-      success: true,
+      success:  true,
       timestamp,
-      records: count,
-      file:    filename,
-      link:    fileLink,
+      records:  count,
+      file:     filename,
+      link:     fileLink,
+      duration,
     });
+
   } catch (error) {
-    console.error('[Backup] Failed:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Backup failed' },
-      { status: 500 }
-    );
+    const duration = Date.now() - start;
+    const message  = error instanceof Error ? error.message : 'Backup failed';
+
+    await logBackupResult({
+      success:  false,
+      error:    message,
+      duration,
+      time:     new Date(),
+      source:   'cron',
+    });
+
+    console.error(`[Backup] ✗ ${message} (${duration}ms)`);
+
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

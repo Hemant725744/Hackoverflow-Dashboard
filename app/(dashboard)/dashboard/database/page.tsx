@@ -12,7 +12,7 @@ import {
 import { backupToDrive, type BackupResult } from '@/actions/backup';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Types
+// Types/Users/observer/Desktop/Projects/Hackoverflow-Dashboard/app/(dashboard)/dashboard/database/page.tsx
 // ─────────────────────────────────────────────────────────────────────────────
 type View  = 'lock' | 'dashboard';
 type Toast = { id: number; msg: string; type: 'ok' | 'err' | 'info' };
