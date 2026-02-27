@@ -37,13 +37,14 @@ const CARD_FORMAT: [number, number] = [CARD_WIDTH_MM, CARD_HEIGHT_MM];
 //    NAME_FONT_SIZE = 14 (bigger text)
 //    Then adjust up/down from there
 
-const NAME_Y_POSITION = 68.5;          // Distance from top for name (increase to move DOWN)
+const NAME_X_OFFSET = 0;             // Horizontal offset for name (negative = LEFT, positive = RIGHT)
+const NAME_Y_POSITION = 68.5;        // Distance from top for name (increase to move DOWN)
 const NAME_FONT_SIZE = 10;           // Font size for participant name
 const NAME_LINE_SPACING = 5;         // Space between lines for long names
 
 const QR_SIZE = 15;                  // QR code size in mm (increase for bigger QR)
-const QR_Y_POSITION = 48;            // Distance from top for QR code (increase to move DOWN)
-// QR is always centered horizontally
+const QR_X_OFFSET = 0;              // Horizontal offset for QR (negative = LEFT, positive = RIGHT)
+const QR_Y_POSITION = 48;           // Distance from top for QR code (increase to move DOWN)
 
 // High-DPI rendering: 5x = professional print quality (1134px width)
 // Increase to 6x or 7x for even sharper output if needed
@@ -219,6 +220,7 @@ async function drawCardOnPDF(
 
   // ===== OVERLAY: PARTICIPANT NAME =====
   const nameAreaWidth = pageWidth * 0.85;
+  const nameCenterX = (pageWidth / 2) + NAME_X_OFFSET;
 
   // Use WHITE text (visible on dark backgrounds)
   pdf.setTextColor(255, 255, 255);
@@ -246,16 +248,16 @@ async function drawCardOnPDF(
     const line1 = nameParts.slice(0, Math.ceil(nameParts.length / 2)).join(' ');
     const line2 = nameParts.slice(Math.ceil(nameParts.length / 2)).join(' ');
     
-    pdf.text(line1, pageWidth / 2, NAME_Y_POSITION, {
+    pdf.text(line1, nameCenterX, NAME_Y_POSITION, {
       align: 'center',
       maxWidth: nameAreaWidth,
     });
-    pdf.text(line2, pageWidth / 2, NAME_Y_POSITION + NAME_LINE_SPACING, {
+    pdf.text(line2, nameCenterX, NAME_Y_POSITION + NAME_LINE_SPACING, {
       align: 'center',
       maxWidth: nameAreaWidth,
     });
   } else {
-    pdf.text(data.name.toUpperCase(), pageWidth / 2, NAME_Y_POSITION, {
+    pdf.text(data.name.toUpperCase(), nameCenterX, NAME_Y_POSITION, {
       align: 'center',
       maxWidth: nameAreaWidth,
     });
@@ -264,7 +266,7 @@ async function drawCardOnPDF(
   console.log(`✓ Name added for ${data.participantId}: ${data.name}`);
 
   // ===== OVERLAY: QR CODE =====
-  const qrX = (pageWidth - QR_SIZE) / 2;
+  const qrX = ((pageWidth - QR_SIZE) / 2) + QR_X_OFFSET;
 
   try {
     if (!data.qrCodeDataURL) {
@@ -310,9 +312,9 @@ async function drawCardOnPDF(
     pdf.setFontSize(8);
     pdf.setTextColor(180, 180, 180);
     pdf.setFont('helvetica', 'normal');
-    pdf.text('QR CODE', pageWidth / 2, QR_Y_POSITION + QR_SIZE / 2 - 1, { align: 'center' });
+    pdf.text('QR CODE', (pageWidth / 2) + QR_X_OFFSET, QR_Y_POSITION + QR_SIZE / 2 - 1, { align: 'center' });
     pdf.setFontSize(5);
-    pdf.text('ERROR', pageWidth / 2, QR_Y_POSITION + QR_SIZE / 2 + 2, { align: 'center' });
+    pdf.text('ERROR', (pageWidth / 2) + QR_X_OFFSET, QR_Y_POSITION + QR_SIZE / 2 + 2, { align: 'center' });
   }
 }
 
