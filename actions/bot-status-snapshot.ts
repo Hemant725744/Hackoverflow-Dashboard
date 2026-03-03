@@ -1,56 +1,66 @@
 'use server';
 
-/**
- * Fetch the live bot heartbeat from MongoDB and return a BotStatusSnapshot.
- * The bot is expected to write a heartbeat document to the `bot_status` collection
- * (same one your /api/bot-config/status route reads from).
- *
- * Usage in your hourly cron/action:
- *
- *   import { getBotConfigSnapshot }  from '@/actions/bot-config-snapshot';
- *   import { getBotStatusSnapshot }  from '@/actions/bot-status-snapshot';
- *   import { sendHourlyBackupReport } from '@/actions/email-report';
- *
- *   const botSnap    = await getBotConfigSnapshot();
- *   const statusSnap = await getBotStatusSnapshot();
- *   await sendHourlyBackupReport(logs, recipient, botSnap, statusSnap);
- */
-
 import clientPromise from '@/lib/mongodb';
 import type { BotStatusSnapshot } from '@/actions/email-report';
 
 const DB_NAME     = process.env.MONGODB_DB || 'hackoverflow';
-const STATUS_COLL = 'bot_status';   // collection your bot upserts its heartbeat into
-const STATUS_DOC  = 'heartbeat';    // _id of that document
-
-/** Heartbeat older than this → bot is considered offline */
-const STALE_MS = 2 * 60 * 1000; // 2 minutes
+const STATUS_COLL = 'bot_status';
+const STALE_MS    = 2 * 60 * 1000; // 2 minutes
 
 export async function getBotStatusSnapshot(): Promise<BotStatusSnapshot> {
+  const empty: BotStatusSnapshot = {
+    online: false, lastSeen: null, tag: null,
+    ping: null, guildCount: null, startedAt: null,
+  };
+
   try {
     const client = await clientPromise;
-    const doc = await client
-      .db(DB_NAME)
-      .collection(STATUS_COLL)
-      .findOne({ _id: STATUS_DOC as never });
+    const coll   = client.db(DB_NAME).collection(STATUS_COLL);
 
+    // Strategy 1: look for the specific 'heartbeat' doc
+    let doc = await coll.findOne({ _id: 'heartbeat' as never });
+
+    // Strategy 2: look for any status doc with common field names
     if (!doc) {
-      return { online: false, lastSeen: null, tag: null, ping: null, guildCount: null, startedAt: null };
+      doc = await coll.findOne(
+        { $or: [{ tag: { $exists: true } }, { online: { $exists: true } }, { lastSeen: { $exists: true } }] },
+        { sort: { _id: -1 } }
+      );
     }
 
-    // Resolve lastSeen — try common field names the bot might write
-    const raw = doc.lastSeen ?? doc.updatedAt ?? doc.timestamp ?? null;
+    // Strategy 3: just grab the most recent document in the collection
+    if (!doc) {
+      doc = await coll.findOne({}, { sort: { _id: -1 } });
+    }
+
+    if (!doc) return empty;
+
+    // Resolve lastSeen from common field names the bot might write
+    const rawSeen =
+      doc.lastSeen   ??
+      doc.updatedAt  ??
+      doc.timestamp  ??
+      doc.heartbeat  ??
+      doc.checkedAt  ??
+      null;
+
     const lastSeen: string | null =
-      raw instanceof Date     ? raw.toISOString() :
-      typeof raw === 'string' ? raw               : null;
+      rawSeen instanceof Date     ? rawSeen.toISOString() :
+      typeof rawSeen === 'string' ? rawSeen : null;
 
     const staleMs  = lastSeen ? Date.now() - new Date(lastSeen).getTime() : undefined;
-    const isOnline = typeof staleMs === 'number' && staleMs < STALE_MS;
 
-    const rawStarted = doc.startedAt ?? null;
+    // Respect an explicit `online` boolean if the bot writes one,
+    // otherwise derive it from the heartbeat freshness.
+    const isOnline =
+      typeof doc.online === 'boolean'
+        ? doc.online && typeof staleMs === 'number' && staleMs < STALE_MS
+        : typeof staleMs === 'number' && staleMs < STALE_MS;
+
+    const rawStarted = doc.startedAt ?? doc.startTime ?? null;
     const startedAt: string | null =
       rawStarted instanceof Date     ? rawStarted.toISOString() :
-      typeof rawStarted === 'string' ? rawStarted               : null;
+      typeof rawStarted === 'string' ? rawStarted : null;
 
     return {
       online:     isOnline,
@@ -61,7 +71,8 @@ export async function getBotStatusSnapshot(): Promise<BotStatusSnapshot> {
       startedAt,
       staleMs,
     };
-  } catch {
-    return { online: false, lastSeen: null, tag: null, ping: null, guildCount: null, startedAt: null };
+  } catch (err) {
+    console.error('[getBotStatusSnapshot] failed:', err);
+    return empty;
   }
 }

@@ -3,8 +3,6 @@
 import nodemailer from 'nodemailer';
 import type { BackupLogEntry } from '@/actions/backup-log';
 
-// ─── Snapshots ─────────────────────────────────────────────────────────────────
-
 export interface BotConfigSnapshot {
   version:    number;
   updatedAt:  string | null;
@@ -22,8 +20,6 @@ export interface BotStatusSnapshot {
   startedAt:  string | null;
   staleMs?:   number;
 }
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function createTransport() {
   return nodemailer.createTransport({
@@ -56,13 +52,11 @@ function relTime(iso: string): string {
 }
 
 function pingColor(ms: number | null): string {
-  if (ms === null) return '#666';
+  if (ms === null) return '#999';
   if (ms < 100)   return '#4ade80';
   if (ms < 300)   return '#f6ad55';
   return '#f87171';
 }
-
-// ─── Main export ───────────────────────────────────────────────────────────────
 
 export async function sendHourlyBackupReport(
   logs:       BackupLogEntry[],
@@ -72,158 +66,105 @@ export async function sendHourlyBackupReport(
 ): Promise<void> {
   const transporter = createTransport();
 
-  const succeeded  = logs.filter(l => l.success);
-  const failed     = logs.filter(l => !l.success);
-  const statusLabel =
-    failed.length === 0           ? 'ALL PASSED' :
-    failed.length === logs.length ? 'ALL FAILED'  : 'PARTIAL FAILURE';
+  const succeeded   = logs.filter(l => l.success);
+  const failed      = logs.filter(l => !l.success);
+  const allPassed   = failed.length === 0 && logs.length > 0;
+  const allFailed   = failed.length === logs.length && logs.length > 0;
+  const statusLabel = logs.length === 0 ? 'NO ACTIVITY' : allPassed ? 'ALL PASSED' : allFailed ? 'ALL FAILED' : 'PARTIAL';
+  const accentRgb   = logs.length === 0 ? '246,173,85' : allPassed ? '74,222,128' : allFailed ? '248,113,113' : '246,173,85';
+  const accentHex   = logs.length === 0 ? '#f6ad55'    : allPassed ? '#4ade80'    : allFailed ? '#f87171'     : '#f6ad55';
 
-  // ── Backup log rows ─────────────────────────────────────────────────────────
-  const rows = logs.map(l => {
-    const bg    = l.success ? '#0d1f0d' : '#1f0d0d';
+  // ── Log rows ────────────────────────────────────────────────────────────────
+  const rows = logs.map((l, i) => {
+    const rowBg = i % 2 === 0 ? 'rgba(255,255,255,0.018)' : 'transparent';
     const badge = l.success
-      ? '<span style="color:#4ade80;font-weight:700;font-family:monospace;font-size:12px">SUCCESS</span>'
-      : '<span style="color:#f87171;font-weight:700;font-family:monospace;font-size:12px">FAILED</span>';
+      ? `<span style="display:inline-block;padding:2px 8px;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);color:#4ade80;font-family:'Courier New',monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;">✓ OK</span>`
+      : `<span style="display:inline-block;padding:2px 8px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);color:#f87171;font-family:'Courier New',monospace;font-size:10px;font-weight:700;letter-spacing:0.1em;">✗ FAIL</span>`;
     const driveCell = l.driveUrl
-      ? `<a href="${l.driveUrl}" style="color:#60a5fa;font-family:monospace;font-size:12px">Open</a>`
-      : '—';
+      ? `<a href="${l.driveUrl}" style="display:inline-block;padding:2px 8px;color:#60a5fa;font-family:'Courier New',monospace;font-size:10px;text-decoration:none;border:1px solid rgba(96,165,250,0.25);background:rgba(96,165,250,0.06);">↗ Open</a>`
+      : `<span style="color:rgba(255,255,255,0.15);">—</span>`;
     return `
-      <tr style="background:${bg};border-bottom:1px solid #1a1a1a;">
-        <td style="padding:10px 14px;font-family:monospace;font-size:12px;color:#aaa;white-space:nowrap">${formatTime(l.time)}</td>
-        <td style="padding:10px 14px">${badge}</td>
-        <td style="padding:10px 14px;font-family:monospace;font-size:12px;color:#ccc">${l.count ?? '—'}</td>
-        <td style="padding:10px 14px">${driveCell}</td>
-        <td style="padding:10px 14px;font-family:monospace;font-size:12px;color:#666">${formatDuration(l.duration)}</td>
-        <td style="padding:10px 14px;font-family:monospace;font-size:12px;color:#f87171;max-width:200px;word-break:break-word">${l.error ?? ''}</td>
+      <tr style="background:${rowBg};">
+        <td style="padding:10px 16px;font-family:'Courier New',monospace;font-size:11px;color:rgba(255,255,255,0.4);white-space:nowrap;border-bottom:1px solid rgba(255,255,255,0.04);">${formatTime(l.time)}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);">${badge}</td>
+        <td style="padding:10px 16px;font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#fff;border-bottom:1px solid rgba(255,255,255,0.04);">${l.count ?? '—'}</td>
+        <td style="padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);">${driveCell}</td>
+        <td style="padding:10px 16px;font-family:'Courier New',monospace;font-size:11px;color:rgba(255,255,255,0.3);border-bottom:1px solid rgba(255,255,255,0.04);">${formatDuration(l.duration)}</td>
+        <td style="padding:10px 16px;font-family:'Courier New',monospace;font-size:11px;color:#f87171;max-width:180px;word-break:break-word;border-bottom:1px solid rgba(255,255,255,0.04);">${l.error ?? ''}</td>
       </tr>`;
   }).join('');
 
-  // ── Summary stat cards ──────────────────────────────────────────────────────
+  // ── Stat cards ──────────────────────────────────────────────────────────────
   const statCards = [
-    { label: 'TOTAL BACKUPS', value: logs.length,      color: '#fff'    },
-    { label: 'SUCCEEDED',     value: succeeded.length, color: '#4ade80' },
-    { label: 'FAILED',        value: failed.length,    color: failed.length ? '#f87171' : '#666' },
+    { label: 'TOTAL',   value: logs.length,      sub: 'backups',    color: '#fff'      },
+    { label: 'PASSED',  value: succeeded.length, sub: 'successful', color: '#4ade80'   },
+    { label: 'FAILED',  value: failed.length,    sub: 'errors',     color: failed.length ? '#f87171' : 'rgba(255,255,255,0.2)' },
   ].map(s => `
-    <td style="padding:16px 20px;border:1px solid rgba(255,255,255,0.08);text-align:center;width:33%;">
-      <div style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.12em;margin-bottom:6px">${s.label}</div>
-      <div style="font-family:monospace;font-size:26px;font-weight:900;color:${s.color}">${s.value}</div>
+    <td style="padding:4px;width:33%;">
+      <div style="padding:20px 16px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);text-align:center;">
+        <div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.16em;margin-bottom:8px;">${s.label}</div>
+        <div style="font-family:'Courier New',monospace;font-size:30px;font-weight:900;color:${s.color};line-height:1;">${s.value}</div>
+        <div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.18);margin-top:5px;">${s.sub}</div>
+      </div>
     </td>`).join('');
 
-  // ── Bot Status Section ──────────────────────────────────────────────────────
-  let botStatusSection = '';
+  // ── Bot Status ──────────────────────────────────────────────────────────────
+  let botStatusHtml = '';
   if (botStatus) {
-    const online       = botStatus.online;
-    const dotColor     = online ? '#4ade80' : '#f87171';
-    const statusText   = online ? 'ONLINE'  : 'OFFLINE';
-    const statusBg     = online ? '#0d1f0d' : '#1f0d0d';
-    const borderColor  = online ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)';
+    const online     = botStatus.online;
+    const dotColor   = online ? '#4ade80' : '#f87171';
+    const statusText = online ? 'ONLINE' : 'OFFLINE';
+    const border     = online ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
 
-    // Build stat pills
-    const pills: string[] = [];
+    const pills = [
+      botStatus.tag        ? `<td style="padding:4px;"><div style="padding:12px 16px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);text-align:center;"><div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.12em;margin-bottom:4px;">BOT TAG</div><div style="font-family:'Courier New',monospace;font-size:13px;font-weight:700;color:#fff;">${botStatus.tag}</div></div></td>` : '',
+      botStatus.ping !== null ? `<td style="padding:4px;"><div style="padding:12px 16px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);text-align:center;"><div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.12em;margin-bottom:4px;">PING</div><div style="font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:${pingColor(botStatus.ping)};">${botStatus.ping}ms</div></div></td>` : '',
+      botStatus.guildCount !== null ? `<td style="padding:4px;"><div style="padding:12px 16px;background:rgba(255,255,255,0.025);border:1px solid rgba(255,255,255,0.07);text-align:center;"><div style="font-family:'Courier New',monospace;font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.12em;margin-bottom:4px;">SERVERS</div><div style="font-family:'Courier New',monospace;font-size:16px;font-weight:700;color:#fff;">${botStatus.guildCount}</div></div></td>` : '',
+    ].filter(Boolean).join('');
 
-    if (botStatus.tag) {
-      pills.push(`
-        <td style="padding:12px 16px;border:1px solid rgba(255,255,255,0.08);text-align:center;">
-          <div style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;margin-bottom:4px">BOT TAG</div>
-          <div style="font-family:monospace;font-size:14px;font-weight:700;color:#fff">${botStatus.tag}</div>
-        </td>`);
-    }
-
-    if (botStatus.ping !== null) {
-      pills.push(`
-        <td style="padding:12px 16px;border:1px solid rgba(255,255,255,0.08);text-align:center;">
-          <div style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;margin-bottom:4px">PING</div>
-          <div style="font-family:monospace;font-size:14px;font-weight:700;color:${pingColor(botStatus.ping)}">${botStatus.ping}ms</div>
-        </td>`);
-    }
-
-    if (botStatus.guildCount !== null) {
-      pills.push(`
-        <td style="padding:12px 16px;border:1px solid rgba(255,255,255,0.08);text-align:center;">
-          <div style="font-family:monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;margin-bottom:4px">SERVERS</div>
-          <div style="font-family:monospace;font-size:14px;font-weight:700;color:#fff">${botStatus.guildCount}</div>
-        </td>`);
-    }
-
-    const lastSeenLine = !online && botStatus.lastSeen
-      ? `<div style="font-family:monospace;font-size:11px;color:#f87171;opacity:0.7;margin-top:6px">
-           Last seen: ${formatTime(botStatus.lastSeen)} (${relTime(botStatus.lastSeen)})
-         </div>`
+    const timeNote = !online && botStatus.lastSeen
+      ? `<div style="font-family:'Courier New',monospace;font-size:11px;color:rgba(248,113,113,0.65);margin-top:6px;">Last seen ${formatTime(botStatus.lastSeen)} (${relTime(botStatus.lastSeen)})</div>`
+      : online && botStatus.startedAt
+      ? `<div style="font-family:'Courier New',monospace;font-size:11px;color:rgba(255,255,255,0.22);margin-top:5px;">Up since ${formatTime(botStatus.startedAt)}</div>`
       : '';
 
-    const startedLine = online && botStatus.startedAt
-      ? `<div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">
-           Up since: ${formatTime(botStatus.startedAt)}
-         </div>`
-      : '';
-
-    const pillsHtml = pills.length > 0
-      ? `<table style="border-collapse:separate;border-spacing:6px;margin-top:14px;">
-           <tbody><tr>${pills.join('')}</tr></tbody>
-         </table>`
-      : '';
-
-    botStatusSection = `
-      <!-- Bot Status Section -->
-      <div style="margin-top:12px;border:1px solid ${borderColor};background:${statusBg};padding:20px 24px;">
-        <div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;color:rgba(255,255,255,0.3);margin-bottom:10px">
-          BOT RUNTIME STATUS
+    botStatusHtml = `
+      <div style="border:1px solid ${border};padding:20px 24px;background:rgba(255,255,255,0.015);margin-bottom:2px;">
+        <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.16em;color:rgba(255,255,255,0.18);margin-bottom:12px;">BOT RUNTIME</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${dotColor};flex-shrink:0;"></span>
+          <span style="font-family:'Courier New',monospace;font-size:20px;font-weight:900;color:${dotColor};letter-spacing:0.04em;">${statusText}</span>
+          ${botStatus.staleMs != null && !online
+            ? `<span style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,0.2);">stale ${formatDuration(botStatus.staleMs)}</span>`
+            : ''}
         </div>
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px;">
-          <span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${dotColor};"></span>
-          <span style="font-family:monospace;font-size:20px;font-weight:900;color:${dotColor};">${statusText}</span>
-        </div>
-        ${lastSeenLine}
-        ${startedLine}
-        ${pillsHtml}
+        ${timeNote}
+        ${pills ? `<table style="border-collapse:collapse;margin-top:12px;" cellspacing="0" cellpadding="0"><tbody><tr>${pills}</tr></tbody></table>` : ''}
       </div>`;
   }
 
-  // ── Bot Config Section ──────────────────────────────────────────────────────
-  let botConfigSection = '';
+  // ── Bot Config ──────────────────────────────────────────────────────────────
+  let botConfigHtml = '';
   if (botConfig) {
-    const cfgColor  = botConfig.healthy ? '#4ade80' : '#f87171';
-    const cfgText   = botConfig.healthy ? 'HEALTHY' : 'UNREACHABLE';
-    const cfgBg     = botConfig.healthy ? '#0d1f0d' : '#1f0d0d';
-    const cfgBorder = botConfig.healthy ? 'rgba(74,222,128,0.2)' : 'rgba(248,113,113,0.2)';
-
-    const authorLine = botConfig.updatedBy && botConfig.updatedBy !== 'unknown'
-      ? `<span style="color:rgba(255,255,255,0.35);font-family:monospace;font-size:11px"> · by ${botConfig.updatedBy}</span>`
+    const cc  = botConfig.healthy ? '#4ade80' : '#f87171';
+    const cb  = botConfig.healthy ? 'rgba(74,222,128,0.15)' : 'rgba(248,113,113,0.15)';
+    const by  = botConfig.updatedBy && botConfig.updatedBy !== 'unknown'
+      ? ` <span style="color:rgba(255,255,255,0.2);">by ${botConfig.updatedBy}</span>`
       : '';
 
-    const updatedLine = botConfig.updatedAt
-      ? `<div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,0.3);margin-top:4px">
-           Last saved: ${formatTime(botConfig.updatedAt)}${authorLine}
-         </div>`
-      : '';
-
-    const fieldCountLine = botConfig.fieldCount != null
-      ? `<div style="font-family:monospace;font-size:11px;color:rgba(255,255,255,0.28);margin-top:2px">
-           ${botConfig.fieldCount} top-level fields in config
-         </div>`
-      : '';
-
-    botConfigSection = `
-      <!-- Bot Config Section -->
-      <div style="margin-top:12px;border:1px solid ${cfgBorder};background:${cfgBg};padding:20px 24px;">
-        <div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;color:rgba(255,255,255,0.3);margin-bottom:10px">
-          BOT CONFIG STATUS
+    botConfigHtml = `
+      <div style="border:1px solid ${cb};padding:20px 24px;background:rgba(255,255,255,0.015);margin-bottom:2px;">
+        <div style="font-family:'Courier New',monospace;font-size:9px;letter-spacing:0.16em;color:rgba(255,255,255,0.18);margin-bottom:12px;">BOT CONFIG</div>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span style="font-family:'Courier New',monospace;font-size:22px;font-weight:900;color:#fff;">v${botConfig.version}</span>
+          <span style="font-family:'Courier New',monospace;font-size:10px;color:${cc};border:1px solid ${cc};padding:3px 10px;letter-spacing:0.1em;opacity:0.9;">● ${botConfig.healthy ? 'HEALTHY' : 'UNREACHABLE'}</span>
         </div>
-        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
-          <div>
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
-              <span style="font-family:monospace;font-size:18px;font-weight:900;color:#fff;">
-                v${botConfig.version}
-              </span>
-              <span style="font-family:monospace;font-size:11px;font-weight:700;color:${cfgColor};
-                border:1px solid ${cfgColor};padding:2px 8px;opacity:0.85;">
-                ● ${cfgText}
-              </span>
-            </div>
-            ${updatedLine}
-            ${fieldCountLine}
-          </div>
-        </div>
+        ${botConfig.updatedAt
+          ? `<div style="font-family:'Courier New',monospace;font-size:11px;color:rgba(255,255,255,0.22);margin-top:6px;">Saved ${formatTime(botConfig.updatedAt)}${by}</div>`
+          : ''}
+        ${botConfig.fieldCount != null
+          ? `<div style="font-family:'Courier New',monospace;font-size:10px;color:rgba(255,255,255,0.16);margin-top:3px;">${botConfig.fieldCount} config fields</div>`
+          : ''}
       </div>`;
   }
 
@@ -232,93 +173,101 @@ export async function sendHourlyBackupReport(
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
   <style>
-    @media only screen and (max-width: 600px) {
-      .outer-wrap  { padding: 0 8px !important; }
-      .header-box  { padding: 20px 16px !important; }
-      .stat-table  { display: block !important; width: 100% !important; }
-      .stat-table tbody { display: block !important; }
-      .stat-table tr    { display: flex !important; flex-wrap: wrap !important; }
-      .stat-table td    { flex: 1 1 80px !important; padding: 12px 10px !important; }
-      .log-wrap    { overflow-x: auto !important; -webkit-overflow-scrolling: touch !important; }
-      .log-table   { min-width: 560px !important; }
-      .footer-box  { padding: 16px !important; }
+    * { box-sizing:border-box; }
+    body { margin:0; padding:0; background:#080808; color:#fff; }
+    @media only screen and (max-width:600px) {
+      .wrap    { padding:10px !important; }
+      .hdr     { padding:20px 16px !important; }
+      .statrow td { display:block !important; width:100% !important; }
+      .scroll  { overflow-x:auto !important; }
+      .ltable  { min-width:500px !important; }
     }
   </style>
 </head>
-<body style="margin:0;padding:0;background:#0a0a0a;color:#fff;font-family:system-ui,sans-serif;">
-  <div class="outer-wrap" style="max-width:760px;margin:32px auto;padding:0 16px;">
+<body>
+<div class="wrap" style="max-width:680px;margin:0 auto;padding:20px 14px;font-family:'Courier New',Courier,monospace;background:#080808;">
 
-    <!-- Header -->
-    <div class="header-box" style="border:1px solid rgba(255,255,255,0.09);padding:32px;">
-      <div style="font-family:monospace;font-size:10px;letter-spacing:0.14em;color:rgba(255,255,255,0.3);margin-bottom:8px;text-transform:uppercase">
-        Hackoverflow // Hourly System Report
-      </div>
-      <h1 style="margin:0 0 4px;font-size:24px;font-weight:900;letter-spacing:-0.03em;color:#fff">
-        Backup &amp; Bot Health Summary
-      </h1>
-      <p style="margin:4px 0 0;font-family:monospace;font-size:12px;color:rgba(255,255,255,0.4)">
-        Period ending ${formatTime(new Date())} &nbsp;&middot;&nbsp;
-        <span style="color:${failed.length === 0 ? '#4ade80' : failed.length === logs.length ? '#f87171' : '#facc15'}">${statusLabel}</span>
-      </p>
+  <!-- accent top bar -->
+  <div style="height:2px;background:linear-gradient(90deg,${accentHex} 0%,rgba(${accentRgb},0.2) 50%,transparent 100%);margin-bottom:2px;"></div>
 
-      <!-- Backup stat cards -->
-      <table class="stat-table" style="width:100%;border-collapse:separate;border-spacing:8px;margin-top:20px;">
-        <tbody><tr>${statCards}</tr></tbody>
-      </table>
-    </div>
+  <!-- HEADER -->
+  <div class="hdr" style="padding:28px 28px 24px;border:1px solid rgba(255,255,255,0.08);background:rgba(255,255,255,0.015);margin-bottom:2px;">
+    <table style="width:100%;border-collapse:collapse;" cellspacing="0" cellpadding="0">
+      <tbody><tr>
+        <td style="vertical-align:top;">
+          <div style="font-size:9px;letter-spacing:0.18em;color:rgba(255,255,255,0.2);margin-bottom:10px;text-transform:uppercase;">Hackoverflow · Hourly Report</div>
+          <h1 style="margin:0 0 5px;font-size:26px;font-weight:900;letter-spacing:-0.02em;color:#fff;line-height:1.1;">Backup &amp; Bot Health</h1>
+          <div style="font-size:11px;color:rgba(255,255,255,0.28);margin-top:3px;">Ends ${formatTime(new Date())}</div>
+        </td>
+        <td style="text-align:right;vertical-align:top;">
+          <span style="display:inline-block;padding:5px 14px;border:1px solid rgba(${accentRgb},0.35);background:rgba(${accentRgb},0.08);font-size:10px;font-weight:700;letter-spacing:0.12em;color:${accentHex};">${statusLabel}</span>
+        </td>
+      </tr></tbody>
+    </table>
 
-    <!-- Bot Runtime Status -->
-    ${botStatusSection}
-
-    <!-- Bot Config Status -->
-    ${botConfigSection}
-
-    <!-- Divider label -->
-    <div style="margin-top:16px;margin-bottom:4px;font-family:monospace;font-size:10px;
-      letter-spacing:0.14em;color:rgba(255,255,255,0.25);padding-left:2px;">
-      DATABASE BACKUP LOG
-    </div>
-
-    <!-- Log table or empty state -->
-    ${logs.length === 0
-      ? `<div style="border:1px solid rgba(250,204,21,0.3);background:rgba(250,204,21,0.05);padding:24px;font-family:monospace;font-size:13px;color:#facc15;line-height:1.6">
-           NO BACKUPS WERE RECORDED IN THIS HOUR<br/>
-           <span style="color:rgba(255,255,255,0.3);font-size:11px">Check GitHub Actions and cron configuration.</span>
-         </div>`
-      : `<div class="log-wrap" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
-           <table class="log-table" style="width:100%;border-collapse:collapse;font-size:13px;">
-             <thead>
-               <tr style="border-bottom:1px solid rgba(255,255,255,0.1)">
-                 ${['TIME','STATUS','RECORDS','DRIVE','DURATION','ERROR']
-                   .map(h => `<th style="padding:10px 14px;text-align:left;font-family:monospace;font-size:10px;color:rgba(255,255,255,0.3);letter-spacing:0.1em;white-space:nowrap">${h}</th>`)
-                   .join('')}
-               </tr>
-             </thead>
-             <tbody>${rows}</tbody>
-           </table>
-         </div>`}
-
-    <!-- Footer -->
-    <div class="footer-box" style="margin-top:12px;border:1px solid rgba(255,255,255,0.06);padding:20px;
-      font-family:monospace;font-size:11px;color:rgba(255,255,255,0.25);line-height:1.8">
-      Automated report &middot; Hackoverflow Dashboard &middot; Logs stored in MongoDB backup_logs collection<br/>
-      Times shown in IST (Asia/Kolkata)
-    </div>
-
+    <!-- Stat cards -->
+    <table class="statrow" style="width:100%;border-collapse:collapse;margin-top:20px;" cellspacing="0" cellpadding="0">
+      <tbody><tr>${statCards}</tr></tbody>
+    </table>
   </div>
+
+  <!-- BOT STATUS -->
+  ${botStatusHtml}
+
+  <!-- BOT CONFIG -->
+  ${botConfigHtml}
+
+  <!-- LOG HEADER -->
+  <div style="padding:12px 14px 8px;margin-top:4px;">
+    <span style="font-size:9px;letter-spacing:0.18em;color:rgba(255,255,255,0.2);">DATABASE BACKUP LOG</span>
+  </div>
+
+  <!-- LOG TABLE -->
+  ${logs.length === 0
+    ? `<div style="border:1px solid rgba(246,173,85,0.2);background:rgba(246,173,85,0.03);padding:24px 20px;">
+         <div style="font-size:12px;font-weight:700;color:#f6ad55;letter-spacing:0.08em;margin-bottom:5px;">NO BACKUPS RECORDED THIS HOUR</div>
+         <div style="font-size:11px;color:rgba(255,255,255,0.22);">Check GitHub Actions and cron configuration.</div>
+       </div>`
+    : `<div class="scroll" style="overflow-x:auto;-webkit-overflow-scrolling:touch;">
+         <table class="ltable" style="width:100%;border-collapse:collapse;border:1px solid rgba(255,255,255,0.07);" cellspacing="0" cellpadding="0">
+           <thead>
+             <tr style="background:rgba(255,255,255,0.03);border-bottom:1px solid rgba(255,255,255,0.08);">
+               ${['TIME','STATUS','RECORDS','DRIVE','DURATION','ERROR'].map(h =>
+                 `<th style="padding:9px 16px;text-align:left;font-size:9px;color:rgba(255,255,255,0.22);letter-spacing:0.14em;white-space:nowrap;font-weight:600;">${h}</th>`
+               ).join('')}
+             </tr>
+           </thead>
+           <tbody>${rows}</tbody>
+         </table>
+       </div>`
+  }
+
+  <!-- FOOTER -->
+  <div style="margin-top:2px;padding:16px 18px;border:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;">
+    <div style="font-size:10px;color:rgba(255,255,255,0.18);line-height:1.8;">
+      Automated · Hackoverflow Dashboard<br>
+      <span style="color:rgba(255,255,255,0.28);">backup_logs</span> collection · MongoDB
+    </div>
+    <div style="font-size:9px;color:rgba(255,255,255,0.14);letter-spacing:0.1em;text-align:right;">
+      IST<br>Asia/Kolkata
+    </div>
+  </div>
+
+  <!-- bottom accent -->
+  <div style="height:1px;background:linear-gradient(90deg,rgba(${accentRgb},0.3) 0%,transparent 60%);margin-top:2px;"></div>
+
+</div>
 </body>
 </html>`;
 
-  // ── Subject line ────────────────────────────────────────────────────────────
-  const botOnlineIndicator = botStatus
-    ? (botStatus.online ? ' · Bot ✓' : ' · Bot ✗')
-    : '';
-
-  const subject = logs.length === 0
-    ? `[Hackoverflow] No backups recorded — Config ${botConfig ? `v${botConfig.version}` : ''}${botOnlineIndicator} — ${formatTime(new Date())}`
-    : `[Hackoverflow] ${succeeded.length}/${logs.length} backups OK — Config ${botConfig ? `v${botConfig.version}` : ''}${botOnlineIndicator} — ${formatTime(new Date())}`;
+  const botOnline = botStatus ? (botStatus.online ? ' · Bot ✓' : ' · Bot ✗') : '';
+  const cfgLabel  = botConfig ? ` · Config v${botConfig.version}` : '';
+  const subject   = logs.length === 0
+    ? `[Hackoverflow] No backups recorded${cfgLabel}${botOnline} — ${formatTime(new Date())}`
+    : `[Hackoverflow] ${succeeded.length}/${logs.length} OK${cfgLabel}${botOnline} — ${formatTime(new Date())}`;
 
   await transporter.sendMail({
     from:    `"Hackoverflow Backup" <${process.env.EMAIL_USER}>`,
