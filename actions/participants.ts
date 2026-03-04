@@ -33,7 +33,7 @@ export async function getParticipants(): Promise<DBParticipant[]> {
       .find({})
       .sort({ createdAt: -1 })
       .toArray();
-    
+
     return participants.map(p => ({
       ...p,
       _id: p._id?.toString(),
@@ -51,9 +51,9 @@ export async function getParticipantById(id: string): Promise<DBParticipant | nu
   try {
     const collection = await getCollection();
     const participant = await collection.findOne({ _id: new ObjectId(id) });
-    
+
     if (!participant) return null;
-    
+
     return {
       ...participant,
       _id: participant._id?.toString(),
@@ -72,17 +72,20 @@ export async function createParticipants(
 ): Promise<{ success: boolean; count: number; error?: string }> {
   try {
     const collection = await getCollection();
-    
+
     const participantsWithTimestamps = participants.map(p => ({
       ...p,
       collegeCheckIn: p.collegeCheckIn || { status: false },
       labCheckIn: p.labCheckIn || { status: false },
+      collegeCheckOut: p.collegeCheckOut || { status: false },
+      labCheckOut: p.labCheckOut || { status: false },
+      tempLabCheckOut: p.tempLabCheckOut || { status: false },
       createdAt: new Date(),
       updatedAt: new Date(),
     }));
-    
+
     const result = await collection.insertMany(participantsWithTimestamps);
-    
+
     return {
       success: true,
       count: result.insertedCount,
@@ -106,7 +109,7 @@ export async function updateParticipant(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const collection = await getCollection();
-    
+
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
       {
@@ -116,11 +119,11 @@ export async function updateParticipant(
         },
       }
     );
-    
+
     if (result.matchedCount === 0) {
       return { success: false, error: 'Participant not found' };
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error updating participant:', error);
@@ -137,13 +140,13 @@ export async function updateParticipant(
 export async function deleteParticipant(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     const collection = await getCollection();
-    
+
     const result = await collection.deleteOne({ _id: new ObjectId(id) });
-    
+
     if (result.deletedCount === 0) {
       return { success: false, error: 'Participant not found' };
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error deleting participant:', error);
@@ -159,14 +162,19 @@ export async function deleteParticipant(id: string): Promise<{ success: boolean;
  */
 export async function updateCheckInStatus(
   id: string,
-  type: 'college' | 'lab',
+  type: 'college' | 'lab' | 'collegeOut' | 'labOut' | 'tempLabOut',
   status: boolean
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const collection = await getCollection();
-    
-    const updateField = type === 'college' ? 'collegeCheckIn' : 'labCheckIn';
-    
+
+    const updateField =
+      type === 'college' ? 'collegeCheckIn' :
+        type === 'lab' ? 'labCheckIn' :
+          type === 'collegeOut' ? 'collegeCheckOut' :
+            type === 'labOut' ? 'labCheckOut' :
+              'tempLabCheckOut';
+
     const result = await collection.updateOne(
       { _id: new ObjectId(id) },
       {
@@ -179,11 +187,11 @@ export async function updateCheckInStatus(
         },
       }
     );
-    
+
     if (result.matchedCount === 0) {
       return { success: false, error: 'Participant not found' };
     }
-    
+
     return { success: true };
   } catch (error) {
     console.error('Error updating check-in status:', error);
@@ -201,7 +209,7 @@ export async function deleteAllParticipants(): Promise<{ success: boolean; count
   try {
     const collection = await getCollection();
     const result = await collection.deleteMany({});
-    
+
     return {
       success: true,
       count: result.deletedCount,

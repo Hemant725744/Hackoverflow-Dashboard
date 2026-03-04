@@ -74,6 +74,8 @@ export interface Participant {
 export interface DBParticipant {
   _id?: string;
   participantId: string;
+
+  // ── Basic Info ─────────────────────────────────────────
   name: string;
   email: string;
   phone?: string;
@@ -93,6 +95,7 @@ export interface DBParticipant {
   /** State / province the participant's institute is located in */
   state?: string;
   labAllotted?: string;
+
   wifiCredentials?: {
     ssid?: string;
     password?: string;
@@ -103,15 +106,24 @@ export interface DBParticipant {
     status: boolean;
     time?: Date;
   };
+
   labCheckIn?: {
     status: boolean;
     time?: Date;
   };
+
   /** Permanent checkout from the college/event */
   collegeCheckOut?: {
     status: boolean;
     time?: Date;
   };
+
+  /** Permanent lab checkout */
+  labCheckOut?: {
+    status: boolean;
+    time?: Date;
+  };
+
   /** Temporary exit from the lab (tracked for alerts if > 10 min) */
   tempLabCheckOut?: {
     status: boolean;
@@ -149,6 +161,7 @@ export interface IDCardData {
   readonly phone: string;
   readonly participantId: string;
   readonly qrCodeDataURL: string;
+
   /** Optional team identifier shown on the card (e.g. "TEAM-001") */
   readonly teamId?: string;
 }

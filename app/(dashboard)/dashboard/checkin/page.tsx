@@ -120,10 +120,10 @@ export default function CheckInPage() {
           collegeCheckInTime: p.collegeCheckIn?.time ? new Date(p.collegeCheckIn.time).toISOString() : undefined,
           labCheckedIn: p.labCheckIn?.status || false,
           labCheckInTime: p.labCheckIn?.time ? new Date(p.labCheckIn.time).toISOString() : undefined,
-          labCheckedOut: false,
-          labCheckOutTime: undefined,
-          tempLabCheckOut: false,
-          tempLabCheckOutTime: undefined,
+          labCheckedOut: p.labCheckOut?.status || false,
+          labCheckOutTime: p.labCheckOut?.time ? new Date(p.labCheckOut.time).toISOString() : undefined,
+          tempLabCheckOut: p.tempLabCheckOut?.status || false,
+          tempLabCheckOutTime: p.tempLabCheckOut?.time ? new Date(p.tempLabCheckOut.time).toISOString() : undefined,
         }
       }));
       setParticipants(transformed);
@@ -142,7 +142,7 @@ export default function CheckInPage() {
     // Apply search filter
     if (searchQuery.trim()) {
       const lowercaseQuery = searchQuery.toLowerCase();
-      filtered = filtered.filter(p => 
+      filtered = filtered.filter(p =>
         p.name.toLowerCase().includes(lowercaseQuery) ||
         p.email.toLowerCase().includes(lowercaseQuery) ||
         (p.phone && p.phone.toLowerCase().includes(lowercaseQuery)) ||
@@ -173,11 +173,11 @@ export default function CheckInPage() {
 
   const handleCheckIn = async (participantId: string, location: 'college' | 'lab') => {
     const now = new Date().toISOString();
-    
+
     // Update UI optimistically
     setParticipants(prev => prev.map(p => {
       if (p._id !== participantId) return p;
-      
+
       if (location === 'college') {
         return {
           ...p,
@@ -211,10 +211,10 @@ export default function CheckInPage() {
 
   const handleCheckOut = async (participantId: string) => {
     const now = new Date().toISOString();
-    
+
     setParticipants(prev => prev.map(p => {
       if (p._id !== participantId) return p;
-      
+
       return {
         ...p,
         checkInStatus: {
@@ -257,7 +257,7 @@ export default function CheckInPage() {
 
   const getStatusBadge = (participant: Participant) => {
     const { checkInStatus } = participant;
-    
+
     if (checkInStatus.labCheckedOut) {
       return { text: 'CHECKED OUT', color: 'rgba(255, 255, 255, 0.3)' };
     }
@@ -373,7 +373,7 @@ export default function CheckInPage() {
                   </div>
                 </div>
               </div>
-              
+
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
@@ -457,8 +457,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -476,8 +476,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -495,8 +495,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -514,8 +514,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -534,16 +534,16 @@ export default function CheckInPage() {
               transition: 'border-color 0.3s',
               backgroundColor: stats.alerts > 0 ? 'rgba(255, 255, 255, 0.05)' : 'transparent'
             }}
-            onMouseEnter={(e) => {
-              if (stats.alerts === 0) {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (stats.alerts === 0) {
-                e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-              }
-            }}>
+              onMouseEnter={(e) => {
+                if (stats.alerts === 0) {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (stats.alerts === 0) {
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                }
+              }}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -561,8 +561,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -580,8 +580,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <div style={{
                 fontSize: '0.75rem',
                 fontFamily: 'monospace',
@@ -603,8 +603,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <label style={{
                 display: 'block',
                 fontSize: '0.875rem',
@@ -616,12 +616,12 @@ export default function CheckInPage() {
                 SEARCH PARTICIPANTS
               </label>
               <div style={{ position: 'relative' }}>
-                <svg 
-                  width="20" 
-                  height="20" 
-                  viewBox="0 0 24 24" 
-                  fill="none" 
-                  stroke="currentColor" 
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
                   strokeWidth="2"
                   style={{
                     position: 'absolute',
@@ -661,8 +661,8 @@ export default function CheckInPage() {
               padding: '1.5rem',
               transition: 'border-color 0.3s'
             }}
-            onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
-            onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
+              onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)'}
+              onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)'}>
               <label style={{
                 display: 'block',
                 fontSize: '0.875rem',
@@ -731,7 +731,7 @@ export default function CheckInPage() {
               }}>
                 {filteredParticipants.map((participant) => {
                   const badge = getStatusBadge(participant);
-                  
+
                   return (
                     <div
                       key={participant._id}
@@ -979,3 +979,4 @@ export default function CheckInPage() {
     </>
   );
 }
+
