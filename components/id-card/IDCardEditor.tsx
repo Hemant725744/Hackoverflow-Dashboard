@@ -4,13 +4,15 @@ import React, { useRef, useCallback, forwardRef } from 'react';
 import { IDCardData } from '@/types';
 
 // ─── Card Physical Dimensions (mm) ──────────────────────────────────────────
-// SVG viewBox: 226.77 × 283.46 px @ 96 DPI
-export const CARD_W_MM = (226.77 / 96) * 25.4; // ≈ 60.02 mm
-export const CARD_H_MM = (283.46 / 96) * 25.4; // ≈ 74.98 mm
+// SVG viewBox: 226.7717 pt × 311.811 pt
+//   → 226.7717 × (25.4 / 72) = 79.97 mm  ≈ 80 mm  (width)
+//   → 311.811  × (25.4 / 72) = 109.97 mm ≈ 110 mm (height)
+export const CARD_W_MM = 80;    // 8.0 cm  ← was wrongly 85, caused vertical squash
+export const CARD_H_MM = 110;   // 11.0 cm ← correct
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface CardOverlays {
-  /** Name text: centerX + baseline-Y in mm (matches jsPDF align:'center') */
+  /** Name text: centerX + baseline-Y in mm */
   name:   { centerXmm: number; ymm: number; fontSizePt: number };
   /** Team ID text: centerX + baseline-Y in mm */
   teamId: { centerXmm: number; ymm: number; fontSizePt: number; show: boolean };
@@ -18,27 +20,28 @@ export interface CardOverlays {
   qr:     { xmm: number; ymm: number; sizemm: number };
 }
 
+// X positions scaled from old 85 mm width → new correct 80 mm:
+//   old_xmm × (80 / 85) ≈ old_xmm × 0.9412
 export const DEFAULT_OVERLAYS: CardOverlays = {
   name: {
-    centerXmm:  CARD_W_MM / 2 + 9.6,          // ≈ 39.6 mm
-    ymm:        56.0,
-    fontSizePt: 8,
+    centerXmm:  52.2,
+    ymm:        85.5,
+    fontSizePt: 11.5,
   },
   teamId: {
-    centerXmm:  CARD_W_MM / 2 + 9.6,          // same center as name
-    ymm:        62.0,                           // just below name
-    fontSizePt: 6.5,
+    centerXmm:  52.2,
+    ymm:        91.8,
+    fontSizePt: 9.5,
     show:       true,
   },
   qr: {
-    xmm:    (CARD_W_MM - 14.5) / 2 + (-15.8), // ≈ 6.96 mm
-    ymm:    50.7,
-    sizemm: 14.5,
+    xmm:    8.9,
+    ymm:    77.0,
+    sizemm: 19.5,
   },
 };
 
 // ─── Font-face injection (preview only) ──────────────────────────────────────
-// Inject @font-face once so the browser preview uses the same .ttf files.
 if (typeof document !== 'undefined') {
   const STYLE_ID = '__id-card-fonts__';
   if (!document.getElementById(STYLE_ID)) {
@@ -68,8 +71,6 @@ function ptToPx(pt: number, previewWidth: number) {
 }
 
 // ─── IDCardCard ───────────────────────────────────────────────────────────────
-// Readonly SVG-overlay card — used for bulk preview grid + html2canvas PNG export.
-
 interface IDCardCardProps {
   data: IDCardData;
   overlays: CardOverlays;
@@ -91,7 +92,7 @@ export const IDCardCard = forwardRef<HTMLDivElement, IDCardCardProps>(
         ref={ref}
         style={{ position: 'relative', width, height, userSelect: 'none', flexShrink: 0 }}
       >
-        {/* SVG Background — clipped to card bounds */}
+        {/* SVG Background */}
         <div style={{ position: 'absolute', inset: 0, overflow: 'hidden' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -169,15 +170,12 @@ export const IDCardCard = forwardRef<HTMLDivElement, IDCardCardProps>(
 IDCardCard.displayName = 'IDCardCard';
 
 // ─── IDCardEditor ─────────────────────────────────────────────────────────────
-// Interactive editor: drag name/teamId/QR + slider controls panel.
-
 type DragType = 'name' | 'teamId' | 'qr';
 
 interface IDCardEditorProps {
   data: IDCardData;
   overlays: CardOverlays;
   onOverlaysChange: (o: CardOverlays) => void;
-  /** Width of the card preview in px */
   previewWidth?: number;
 }
 
@@ -189,7 +187,6 @@ export default function IDCardEditor({
 }: IDCardEditorProps) {
   const previewH = previewWidth * (CARD_H_MM / CARD_W_MM);
 
-  // mm ↔ px conversions
   const xMmToPx = useCallback((mm: number) => (mm / CARD_W_MM) * previewWidth, [previewWidth]);
   const yMmToPx = useCallback((mm: number) => (mm / CARD_H_MM) * previewH,     [previewH]);
   const xPxToMm = useCallback((px: number) => (px / previewWidth) * CARD_W_MM, [previewWidth]);
@@ -198,7 +195,6 @@ export default function IDCardEditor({
   const nameFontPx   = ptToPx(overlays.name.fontSizePt,   previewWidth);
   const teamIdFontPx = ptToPx(overlays.teamId.fontSizePt, previewWidth);
 
-  // ── Drag state ──────────────────────────────────────────────────────────────
   const drag = useRef<{
     type: DragType;
     startClientX: number;
@@ -243,7 +239,6 @@ export default function IDCardEditor({
     outlineOffset: '3px', touchAction: 'none',
   };
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
   return (
     <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
 
@@ -259,12 +254,11 @@ export default function IDCardEditor({
           overflow: 'visible', userSelect: 'none',
           outline: '1px solid rgba(255,255,255,0.12)', outlineOffset: '-1px',
         }}>
-          {/* SVG Background */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/Images/id.svg" alt=""
             style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
 
-          {/* ── Draggable Name — HO2 font ── */}
+          {/* Draggable Name */}
           <div
             onPointerDown={(e) => handlePointerDown(e, 'name')}
             onPointerMove={(e) => handlePointerMove(e, 'name')}
@@ -286,7 +280,7 @@ export default function IDCardEditor({
             {data.name.toUpperCase()}
           </div>
 
-          {/* ── Draggable Team ID — HO font ── */}
+          {/* Draggable Team ID */}
           {overlays.teamId.show && (
             <div
               onPointerDown={(e) => handlePointerDown(e, 'teamId')}
@@ -311,7 +305,7 @@ export default function IDCardEditor({
             </div>
           )}
 
-          {/* ── Draggable QR ── */}
+          {/* Draggable QR */}
           <div
             onPointerDown={(e) => handlePointerDown(e, 'qr')}
             onPointerMove={(e) => handlePointerMove(e, 'qr')}
@@ -330,7 +324,7 @@ export default function IDCardEditor({
             <img src={data.qrCodeDataURL} alt="QR" style={{ width: '100%', height: '100%', display: 'block', pointerEvents: 'none' }} />
           </div>
 
-          {/* Crosshair guide */}
+          {/* Centerline guide */}
           <div style={{
             position: 'absolute',
             left: xMmToPx(overlays.name.centerXmm),
@@ -340,7 +334,6 @@ export default function IDCardEditor({
           }} />
         </div>
 
-        {/* Legend */}
         <div style={{ display: 'flex', gap: '1rem', marginTop: '0.5rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
             <div style={{ width: 10, height: 2, border: '1px dashed rgba(74,222,128,0.75)' }} />
@@ -348,8 +341,7 @@ export default function IDCardEditor({
           </div>
         </div>
 
-        {/* Font legend */}
-        <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+        <div style={{ marginTop: '0.5rem' }}>
           <span style={{ fontFamily: 'monospace', fontSize: '0.5rem', color: 'rgba(255,255,255,0.2)', letterSpacing: '0.06em' }}>
             NAME → HO2.ttf &nbsp;|&nbsp; TEAM ID → HO.ttf
           </span>
@@ -359,7 +351,6 @@ export default function IDCardEditor({
       {/* ── Controls panel ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', minWidth: '200px', flex: 1 }}>
 
-        {/* Name */}
         <ControlGroup label="NAME TEXT  (HO2.ttf)">
           <SliderControl label="CENTER X" unit="mm" value={overlays.name.centerXmm} min={0} max={CARD_W_MM} step={0.1}
             onChange={(v) => onOverlaysChange({ ...overlays, name: { ...overlays.name, centerXmm: v } })} />
@@ -369,9 +360,7 @@ export default function IDCardEditor({
             onChange={(v) => onOverlaysChange({ ...overlays, name: { ...overlays.name, fontSizePt: v } })} />
         </ControlGroup>
 
-        {/* Team ID */}
         <ControlGroup label="TEAM ID  (HO.ttf)">
-          {/* Toggle */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
             <span style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.4)', letterSpacing: '0.07em' }}>SHOW ON CARD</span>
             <button
@@ -403,7 +392,6 @@ export default function IDCardEditor({
           )}
         </ControlGroup>
 
-        {/* QR */}
         <ControlGroup label="QR CODE">
           <SliderControl label="X (LEFT EDGE)" unit="mm" value={overlays.qr.xmm} min={0} max={CARD_W_MM} step={0.1}
             onChange={(v) => onOverlaysChange({ ...overlays, qr: { ...overlays.qr, xmm: v } })} />
@@ -413,7 +401,6 @@ export default function IDCardEditor({
             onChange={(v) => onOverlaysChange({ ...overlays, qr: { ...overlays.qr, sizemm: v } })} />
         </ControlGroup>
 
-        {/* Reset */}
         <button
           onClick={() => onOverlaysChange(DEFAULT_OVERLAYS)}
           style={{
@@ -428,7 +415,6 @@ export default function IDCardEditor({
           ↺ RESET TO DEFAULT
         </button>
 
-        {/* Numeric readout */}
         <div style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.2)', lineHeight: 1.7, padding: '0.75rem', border: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(255,255,255,0.02)' }}>
           <div style={{ color: 'rgba(255,255,255,0.35)', marginBottom: '0.35rem', letterSpacing: '0.06em' }}>CURRENT VALUES (MM)</div>
           <div>name.centerX   = {overlays.name.centerXmm.toFixed(2)}</div>

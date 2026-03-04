@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import IDCardEditor, { IDCardCard, CardOverlays, DEFAULT_OVERLAYS } from '@/components/id-card/IDCardEditor';
+import IDCardEditor, { IDCardCard, CardOverlays, DEFAULT_OVERLAYS, CARD_W_MM, CARD_H_MM } from '@/components/id-card/IDCardEditor';
 import { IDCardData, HackathonInfo } from '@/types';
 import { parseCSVForIDCards } from '@/lib/csv';
 import { downloadCSVTemplate } from '@/utils/csv-download';
@@ -297,7 +297,6 @@ export default function GeneratorPage() {
         {/* ── 4. Format & Generate ── */}
         <Section label={cards.length > 0 ? '4. GENERATE' : '3. GENERATE'}>
 
-          {/* Format selector */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginBottom: '1.5rem' }}>
             {(Object.entries(FORMAT_META) as [DownloadFormat, typeof FORMAT_META[DownloadFormat]][]).map(([fmt, meta]) => {
               const active = downloadFormat === fmt;
@@ -324,7 +323,6 @@ export default function GeneratorPage() {
             })}
           </div>
 
-          {/* Grid info banner */}
           {downloadFormat === 'grid' && selectedCount > 0 && (
             <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', border: '1px solid rgba(74,222,128,0.2)', backgroundColor: 'rgba(74,222,128,0.04)', fontFamily: 'monospace', fontSize: '0.7rem', color: 'rgba(74,222,128,0.8)', display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
               <span>A4 PORTRAIT</span>
@@ -336,7 +334,6 @@ export default function GeneratorPage() {
             </div>
           )}
 
-          {/* Generate button */}
           <button onClick={handleGenerate}
             disabled={isGenerating || selectedCount === 0}
             style={{ width: '100%', padding: '1rem', fontWeight: 900, fontSize: '1.125rem', background: selectedCount === 0 || isGenerating ? 'rgba(255,255,255,0.08)' : '#fff', color: selectedCount === 0 || isGenerating ? 'rgba(255,255,255,0.3)' : '#000', cursor: selectedCount === 0 || isGenerating ? 'not-allowed' : 'pointer', border: 'none', transition: 'all 0.3s', letterSpacing: '0.05em' }}
@@ -377,7 +374,7 @@ export default function GeneratorPage() {
             </div>
           ) : (
             <>
-              {/* A4 page layout preview when grid mode is active */}
+              {/* A4 page layout preview */}
               {downloadFormat === 'grid' && selectedCount > 0 && (
                 <div style={{ marginBottom: '1.5rem' }}>
                   <div style={{ fontFamily: 'monospace', fontSize: '0.6rem', color: 'rgba(255,255,255,0.3)', letterSpacing: '0.08em', marginBottom: '0.75rem' }}>
@@ -386,7 +383,6 @@ export default function GeneratorPage() {
                   <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                     {Array.from({ length: pageCount }).map((_, pi) => {
                       const pageSelectedCards = cards.filter(c => c.selected).slice(pi * CARDS_PER_PAGE, (pi + 1) * CARDS_PER_PAGE);
-                      // Scale A4 to a preview widget ~190px wide
                       const previewW  = 190;
                       const scale     = previewW / A4_W_MM;
                       const previewH  = A4_H_MM * scale;
@@ -398,8 +394,6 @@ export default function GeneratorPage() {
 
                       return (
                         <div key={pi} style={{ position: 'relative', width: previewW, height: previewH, border: '1px solid rgba(255,255,255,0.15)', backgroundColor: 'rgba(255,255,255,0.02)', flexShrink: 0 }}>
-
-                          {/* Cut guide lines */}
                           {[0, 1].map(c => {
                             const x1 = mxPx + c * (slotW + gapPx);
                             const x2 = x1 + slotW;
@@ -414,8 +408,6 @@ export default function GeneratorPage() {
                               <div key={`hg-${r}-${yi}`} style={{ position: 'absolute', left: 0, right: 0, top: y, height: 1, backgroundColor: 'rgba(200,200,200,0.12)' }} />
                             ));
                           })}
-
-                          {/* Card slots */}
                           {Array.from({ length: CARDS_PER_PAGE }).map((_, slot) => {
                             const col  = slot % 2;
                             const row  = Math.floor(slot / 2);
@@ -440,8 +432,6 @@ export default function GeneratorPage() {
                               </div>
                             );
                           })}
-
-                          {/* Page label */}
                           <div style={{ position: 'absolute', bottom: 3, right: 5, fontFamily: 'monospace', fontSize: '0.4rem', color: 'rgba(255,255,255,0.2)' }}>
                             PG {pi + 1}
                           </div>
@@ -452,7 +442,7 @@ export default function GeneratorPage() {
                 </div>
               )}
 
-              {/* Card thumbnails */}
+              {/* Card thumbnails — height derived from live CARD_H_MM / CARD_W_MM */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '1rem', maxHeight: '600px', overflowY: 'auto', padding: '0.25rem' }}>
                 {cards.map((card, i) => {
                   const RENDER_W  = 400;
@@ -460,7 +450,16 @@ export default function GeneratorPage() {
                   const scale     = DISPLAY_W / RENDER_W;
                   return (
                     <div key={i}
-                      style={{ position: 'relative', width: DISPLAY_W, height: DISPLAY_W * (74.98 / 60.02), overflow: 'hidden', border: `1px solid ${card.selected ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.06)'}`, transition: 'border-color 0.2s', cursor: 'pointer' }}
+                      style={{
+                        position: 'relative',
+                        width: DISPLAY_W,
+                        // ✅ Always correct — derived from the single source of truth
+                        height: DISPLAY_W * (CARD_H_MM / CARD_W_MM),
+                        overflow: 'hidden',
+                        border: `1px solid ${card.selected ? 'rgba(74,222,128,0.3)' : 'rgba(255,255,255,0.06)'}`,
+                        transition: 'border-color 0.2s',
+                        cursor: 'pointer',
+                      }}
                       onClick={() => toggleParticipant(i)}
                       title={card.selected ? 'Click to deselect' : 'Click to select'}
                     >
