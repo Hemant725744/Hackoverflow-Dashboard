@@ -171,7 +171,7 @@ function paintText(
   if (overlays.teamId.show && data.teamId) {
     pdf.setFont('HO', 'normal');
     pdf.setFontSize(overlays.teamId.fontSizePt);
-    pdf.setTextColor(187, 187, 187);   // opacity 0.85 of white ≈ rgb(187,187,187)
+    pdf.setTextColor(187, 187, 187);   // opacity 0.85 of white ≈ rgb(255, 255, 255)
     pdf.text(
       `Team id - ${data.teamId}`,
       ox + overlays.teamId.centerXmm,
