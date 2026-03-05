@@ -134,6 +134,9 @@ export interface DBParticipant {
   /** Meal collection status across all 3 days */
   meals?: MealStatus;
 
+  // ── Authentication ──────────────────────────────────
+  loginPassword?: string;
+
   // ── Metadata ──────────────────────────────────────────
   createdAt?: Date;
   updatedAt?: Date;

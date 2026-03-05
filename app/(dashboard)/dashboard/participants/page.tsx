@@ -149,9 +149,10 @@ export default function ParticipantsPage() {
               teamName:      row.team      || row.Team      || row.teamName || row['Team Name'] || '',
               teamId:        row.team_id   || row.teamId    || row['Team ID'] || '',
               institute:     row.institute || row.Institute || row.college   || row.College || '',
-              // ── NEW: state ──────────────────────────────────────────────
               state:         row.state     || row.State     || '',
-              // ────────────────────────────────────────────────────────────
+              // ── NEW: loginPassword ────────────────────────────────────
+              loginPassword: row.loginpassword || row.loginPassword || row['Login Password'] || '',
+              // ─────────────────────────────────────────────────────────
               labAllotted:   row.lab_alloted || row.labAllotted || row['Lab Allotted'] || row.lab || '',
               projectName:   row.project_name || row.projectName || row['Project Name'] || '',
               projectDescription: row.project_description || row.projectDescription || row['Project Description'] || '',
@@ -192,7 +193,8 @@ export default function ParticipantsPage() {
         name: editForm.name, email: editForm.email, phone: editForm.phone,
         role: editForm.role, teamName: editForm.teamName, teamId: editForm.teamId,
         institute: editForm.institute,
-        state: editForm.state, // ── NEW ──
+        state: editForm.state,
+        loginPassword: editForm.loginPassword, // ── NEW ──
         labAllotted: editForm.labAllotted,
         projectName: editForm.projectName, projectDescription: editForm.projectDescription,
         wifiCredentials: editForm.wifiCredentials,
@@ -244,7 +246,8 @@ export default function ParticipantsPage() {
       participant_id: p.participantId, name: p.name, email: p.email,
       phone: p.phone || '', role: p.role || '', team: p.teamName || '',
       team_id: p.teamId || '', institute: p.institute || '',
-      state: p.state || '', // ── NEW ──
+      state: p.state || '',
+      login_password: p.loginPassword || '', // ── NEW ──
       lab_alloted: p.labAllotted || '',
       project_name: p.projectName || '', project_description: p.projectDescription || '',
       wifi_ssid: p.wifiCredentials?.ssid || '', wifi_password: p.wifiCredentials?.password || '',
@@ -407,7 +410,7 @@ export default function ParticipantsPage() {
               </div>
               <div style={{ fontSize: '0.68rem', color: 'rgba(255,255,255,0.3)', marginTop: '0.75rem', fontFamily: 'monospace', lineHeight: 1.6 }}>
                 Required: participant_id, name, email<br />
-                Optional: team_id, state, project_name, project_description, lab_alloted, wifi_credentials
+                Optional: team_id, state, loginpassword, project_name, project_description, lab_alloted, wifi_credentials
               </div>
             </div>
 
@@ -572,17 +575,18 @@ export default function ParticipantsPage() {
                           EDITING: {participant.name} · {participant.participantId}
                         </div>
                         <div className="pp-egrid">
-                          <EF label="NAME"         value={editForm.name        || ''} onChange={v => setEditForm({ ...editForm, name: v })} />
-                          <EF label="EMAIL"        value={editForm.email       || ''} onChange={v => setEditForm({ ...editForm, email: v })} />
-                          <EF label="PHONE"        value={editForm.phone       || ''} onChange={v => setEditForm({ ...editForm, phone: v })} />
-                          <EF label="TEAM NAME"    value={editForm.teamName    || ''} onChange={v => setEditForm({ ...editForm, teamName: v })} />
-                          <EF label="TEAM ID"      value={editForm.teamId      || ''} onChange={v => setEditForm({ ...editForm, teamId: v })} />
-                          <EF label="ROLE"         value={editForm.role        || ''} onChange={v => setEditForm({ ...editForm, role: v })} />
-                          <EF label="INSTITUTE"    value={editForm.institute   || ''} onChange={v => setEditForm({ ...editForm, institute: v })} />
-                          <EF label="STATE"        value={editForm.state       || ''} onChange={v => setEditForm({ ...editForm, state: v })} />
-                          <EF label="LAB ALLOTTED" value={editForm.labAllotted || ''} onChange={v => setEditForm({ ...editForm, labAllotted: v })} />
-                          <EF label="WiFi SSID"    value={editForm.wifiCredentials?.ssid     || ''} onChange={v => setEditForm({ ...editForm, wifiCredentials: { ...editForm.wifiCredentials, ssid: v } })} />
-                          <EF label="WiFi PASSWORD" value={editForm.wifiCredentials?.password || ''} onChange={v => setEditForm({ ...editForm, wifiCredentials: { ...editForm.wifiCredentials, password: v } })} />
+                          <EF label="NAME"           value={editForm.name        || ''} onChange={v => setEditForm({ ...editForm, name: v })} />
+                          <EF label="EMAIL"          value={editForm.email       || ''} onChange={v => setEditForm({ ...editForm, email: v })} />
+                          <EF label="PHONE"          value={editForm.phone       || ''} onChange={v => setEditForm({ ...editForm, phone: v })} />
+                          <EF label="TEAM NAME"      value={editForm.teamName    || ''} onChange={v => setEditForm({ ...editForm, teamName: v })} />
+                          <EF label="TEAM ID"        value={editForm.teamId      || ''} onChange={v => setEditForm({ ...editForm, teamId: v })} />
+                          <EF label="ROLE"           value={editForm.role        || ''} onChange={v => setEditForm({ ...editForm, role: v })} />
+                          <EF label="INSTITUTE"      value={editForm.institute   || ''} onChange={v => setEditForm({ ...editForm, institute: v })} />
+                          <EF label="STATE"          value={editForm.state       || ''} onChange={v => setEditForm({ ...editForm, state: v })} />
+                          <EF label="LOGIN PASSWORD" value={editForm.loginPassword || ''} onChange={v => setEditForm({ ...editForm, loginPassword: v })} />
+                          <EF label="LAB ALLOTTED"   value={editForm.labAllotted || ''} onChange={v => setEditForm({ ...editForm, labAllotted: v })} />
+                          <EF label="WiFi SSID"      value={editForm.wifiCredentials?.ssid     || ''} onChange={v => setEditForm({ ...editForm, wifiCredentials: { ...editForm.wifiCredentials, ssid: v } })} />
+                          <EF label="WiFi PASSWORD"  value={editForm.wifiCredentials?.password || ''} onChange={v => setEditForm({ ...editForm, wifiCredentials: { ...editForm.wifiCredentials, password: v } })} />
                         </div>
                         <div style={{ display: 'grid', gap: '1rem' }}>
                           <EF label="PROJECT NAME"        value={editForm.projectName || ''} onChange={v => setEditForm({ ...editForm, projectName: v })} />
@@ -623,8 +627,9 @@ export default function ParticipantsPage() {
                             {participant.teamName   && <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>Team:</span> {participant.teamName}</div>}
                             {participant.role       && <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>Role:</span> {participant.role}</div>}
                             {participant.institute  && <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>Institute:</span> {participant.institute}</div>}
-                            {/* ── NEW: state ── */}
                             {participant.state      && <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>State:</span> {participant.state}</div>}
+                            {/* ── NEW: loginPassword ── */}
+                            {participant.loginPassword && <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>Login Pass:</span> <span style={{ color: '#fbbf24' }}>{participant.loginPassword}</span></div>}
                             {participant.labAllotted && <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>Lab:</span> {participant.labAllotted}</div>}
                             {participant.wifiCredentials?.ssid && (
                               <div><span style={{ color: 'rgba(255,255,255,0.36)' }}>WiFi:</span> {participant.wifiCredentials.ssid} / <span style={{ color: 'rgba(255,255,255,0.45)' }}>{participant.wifiCredentials.password || '—'}</span></div>
