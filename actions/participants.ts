@@ -222,4 +222,4 @@ export async function deleteAllParticipants(): Promise<{ success: boolean; count
       error: error instanceof Error ? error.message : 'Failed to delete participants',
     };
   }
-}
+} 
